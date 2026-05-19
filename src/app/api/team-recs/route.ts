@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withRetry } from '@/lib/retry';
 import type { BrandReport, TeamArea, TeamRecsResult } from '@/types';
 
+export const maxDuration = 60;
+
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(req: NextRequest) {
