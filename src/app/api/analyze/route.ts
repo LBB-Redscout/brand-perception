@@ -3,27 +3,9 @@ import { NextRequest } from 'next/server';
 import type { SearchResult } from '@/types';
 
 export const maxDuration = 60;
+export const runtime = 'edge';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-const delays = [20000, 40000];
-
-async function runWithRetry(fn: () => Promise<Response>): Promise<Response> {
-  let lastErr: unknown;
-  for (let attempt = 0; attempt <= 2; attempt++) {
-    try {
-      return await fn();
-    } catch (err: unknown) {
-      lastErr = err;
-      const isRateLimit =
-        err instanceof Error &&
-        (err.message.includes('429') || err.message.toLowerCase().includes('rate limit'));
-      if (!isRateLimit || attempt === 2) throw err;
-      await new Promise((r) => setTimeout(r, delays[attempt]));
-    }
-  }
-  throw lastErr;
-}
 
 export async function POST(req: NextRequest) {
   const { brand, industry, searchResult } = (await req.json()) as {
@@ -126,29 +108,26 @@ IMPORTANT: Return ONLY the JSON object. No markdown code fences, no explanation 
       };
 
       try {
-        await runWithRetry(async () => {
-          const stream = client.messages.stream({
-            model: 'claude-sonnet-4-6',
-            max_tokens: 4000,
-            messages: [{ role: 'user', content: prompt }],
-          });
-
-          let fullText = '';
-
-          stream.on('text', (text) => {
-            fullText += text;
-            send({ type: 'delta', text });
-          });
-
-          await stream.finalMessage();
-
-          const jsonMatch = fullText.match(/\{[\s\S]*\}/);
-          if (!jsonMatch) throw new Error('Could not parse JSON from analysis response');
-
-          const report = JSON.parse(jsonMatch[0]);
-          send({ type: 'done', report });
-          return new Response('ok');
+        const stream = client.messages.stream({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 2500,
+          messages: [{ role: 'user', content: prompt }],
         });
+
+        let fullText = '';
+
+        stream.on('text', (text) => {
+          fullText += text;
+          send({ type: 'delta', text });
+        });
+
+        await stream.finalMessage();
+
+        const jsonMatch = fullText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error('Could not parse JSON from analysis response');
+
+        const report = JSON.parse(jsonMatch[0]);
+        send({ type: 'done', report });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Analysis failed';
         send({ type: 'error', message });
