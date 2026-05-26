@@ -101,7 +101,7 @@ IMPORTANT: Return ONLY the JSON object. No markdown code fences, no explanation 
   try {
     const response = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2000,
+      max_tokens: 3500,
       messages: [{ role: 'user', content: prompt }],
     });
 
