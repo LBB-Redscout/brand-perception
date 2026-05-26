@@ -42,11 +42,15 @@ async function runAnalyze(
   searchResult: SearchResult,
   onDelta: (text: string) => void,
 ): Promise<BrandReport> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 90000);
+
   const res = await fetch('/api/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ brand, industry, searchResult }),
-  });
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeout));
   if (!res.ok) throw new Error('Analyze request failed');
 
   const reader = res.body!.getReader();

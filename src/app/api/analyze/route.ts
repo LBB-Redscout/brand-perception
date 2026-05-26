@@ -1,8 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { NextRequest } from 'next/server';
+import type { SearchResult } from '@/types';
 
 export const maxDuration = 60;
-import type { SearchResult } from '@/types';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -128,7 +128,7 @@ IMPORTANT: Return ONLY the JSON object. No markdown code fences, no explanation 
       try {
         await runWithRetry(async () => {
           const stream = client.messages.stream({
-            model: 'claude-sonnet-4-20250514',
+            model: 'claude-sonnet-4-6',
             max_tokens: 4000,
             messages: [{ role: 'user', content: prompt }],
           });
