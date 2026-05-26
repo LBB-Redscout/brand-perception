@@ -244,61 +244,72 @@ export default function HomePage() {
               />
             </div>
 
-            <div className="mb-6">
-              <button
-                type="button"
-                onClick={() => setShowCompetitors((v) => !v)}
-                className="flex items-center gap-2 text-sm font-semibold text-primary hover:text-indigo-700 transition"
-              >
-                <span className={`inline-flex items-center justify-center w-5 h-5 rounded border-2 border-primary transition ${showCompetitors ? 'bg-primary' : 'bg-white'}`}>
-                  {showCompetitors && (
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </span>
-                Add Competitor Comparison (up to 3)
-              </button>
+            {!showCompetitorPicker && (
+              <div className="mb-6">
+                <button
+                  type="button"
+                  onClick={() => setShowCompetitors((v) => !v)}
+                  className="flex items-center gap-2 text-sm font-semibold text-primary hover:text-indigo-700 transition"
+                >
+                  <span className={`inline-flex items-center justify-center w-5 h-5 rounded border-2 border-primary transition ${showCompetitors ? 'bg-primary' : 'bg-white'}`}>
+                    {showCompetitors && (
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </span>
+                  Add Competitors Manually (up to 3)
+                </button>
 
-              {showCompetitors && (
-                <div className="mt-3 space-y-3">
-                  {[0, 1, 2].map((i) => (
-                    <input
-                      key={i}
-                      type="text"
-                      value={competitors[i]}
-                      onChange={(e) => {
-                        const next = [...competitors];
-                        next[i] = e.target.value;
-                        setCompetitors(next);
-                      }}
-                      placeholder={`Competitor ${i + 1} brand name`}
-                      className="w-full border border-brand-border rounded-xl px-4 py-3 text-text-primary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-primary transition text-sm"
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
+                {showCompetitors && (
+                  <div className="mt-3 space-y-3">
+                    {[0, 1, 2].map((i) => (
+                      <input
+                        key={i}
+                        type="text"
+                        value={competitors[i]}
+                        onChange={(e) => {
+                          const next = [...competitors];
+                          next[i] = e.target.value;
+                          setCompetitors(next);
+                        }}
+                        placeholder={`Competitor ${i + 1} brand name`}
+                        className="w-full border border-brand-border rounded-xl px-4 py-3 text-text-primary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-primary transition text-sm"
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {showCompetitorPicker && (
-              <div className="mb-6 p-4 rounded-xl bg-indigo-50 border border-indigo-200">
-                <p className="text-sm font-semibold text-text-primary mb-1">Compare against competitors?</p>
-                <p className="text-xs text-muted mb-3">Select up to 3 to include in the report.</p>
-                <div className="space-y-2">
-                  {suggestedCompetitors.map((c) => (
-                    <label key={c} className="flex items-center gap-3 cursor-pointer">
-                      <span className={`inline-flex items-center justify-center w-5 h-5 rounded border-2 transition flex-shrink-0 ${selectedSuggestions.includes(c) ? 'bg-primary border-primary' : 'border-brand-border bg-white'}`}>
-                        {selectedSuggestions.includes(c) && (
-                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </span>
-                      <span className="text-sm text-text-primary" onClick={() => toggleSuggestion(c)}>{c}</span>
-                    </label>
-                  ))}
+              <div className="mb-6">
+                <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-200">
+                  <p className="text-sm font-semibold text-text-primary mb-1">Compare against competitors?</p>
+                  <p className="text-xs text-muted mb-3">Select up to 3 to include in the report.</p>
+                  <div className="space-y-2">
+                    {suggestedCompetitors.map((c) => (
+                      <label key={c} className="flex items-center gap-3 cursor-pointer" onClick={() => toggleSuggestion(c)}>
+                        <span className={`inline-flex items-center justify-center w-5 h-5 rounded border-2 transition flex-shrink-0 ${selectedSuggestions.includes(c) ? 'bg-primary border-primary' : 'border-brand-border bg-white'}`}>
+                          {selectedSuggestions.includes(c) && (
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </span>
+                        <span className="text-sm text-text-primary">{c}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted mt-3">{selectedSuggestions.length}/3 selected</p>
                 </div>
-                <p className="text-xs text-muted mt-3">{selectedSuggestions.length}/3 selected</p>
+                <button
+                  type="button"
+                  onClick={() => { setShowCompetitorPicker(false); setShowCompetitors(true); }}
+                  className="mt-2 text-xs text-muted hover:text-text-primary transition"
+                >
+                  Enter competitors manually instead
+                </button>
               </div>
             )}
 
