@@ -73,9 +73,12 @@ export default function HomePage() {
   const [retryMsg, setRetryMsg] = useState('');
   const [error, setError] = useState('');
   const [streamPreview, setStreamPreview] = useState('');
+  const [suggestedCompetitors, setSuggestedCompetitors] = useState<string[]>([]);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
+  const [showCompetitorPicker, setShowCompetitorPicker] = useState(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
   const filledCompetitors = competitors.filter((c) => c.trim());
-  const allBrands = [brand.trim(), ...filledCompetitors.map((c) => c.trim())].filter(Boolean);
 
   function setStep(id: string, status: ProgressStep['status']) {
     setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
@@ -134,13 +137,42 @@ export default function HomePage() {
     return { brand: b, industry: ind, report: report! };
   }
 
+  function toggleSuggestion(name: string) {
+    setSelectedSuggestions((prev) =>
+      prev.includes(name) ? prev.filter((s) => s !== name) : prev.length < 3 ? [...prev, name] : prev
+    );
+  }
+
   async function handleAnalyze() {
     if (!brand.trim()) return;
     setError('');
     setStreamPreview('');
     setRetryMsg('');
 
-    const brands = allBrands;
+    const filledManual = competitors.filter((c) => c.trim());
+    if (filledManual.length === 0 && !showCompetitorPicker) {
+      setLoadingSuggestions(true);
+      try {
+        const res = await fetch('/api/suggest-competitors', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ brand: brand.trim(), industry: industry || undefined }),
+        });
+        const data = await res.json();
+        setSuggestedCompetitors(data.competitors ?? []);
+        setSelectedSuggestions([]);
+        setShowCompetitorPicker(true);
+      } catch {
+        // fall through to analysis without competitors
+      } finally {
+        setLoadingSuggestions(false);
+      }
+      return;
+    }
+
+    const chosenCompetitors = showCompetitorPicker ? selectedSuggestions : filledManual;
+    const brands = [brand.trim(), ...chosenCompetitors].filter(Boolean);
+    setShowCompetitorPicker(false);
     setSteps(buildSteps(brands));
     setRunning(true);
 
@@ -151,6 +183,7 @@ export default function HomePage() {
         const result = await runForBrand(b, ind);
         results.push(result);
       }
+
 
       const [primary, ...competitorResults] = results;
       const payload = { primary, competitors: competitorResults, teamRecs: [] };
@@ -247,6 +280,28 @@ export default function HomePage() {
               )}
             </div>
 
+            {showCompetitorPicker && (
+              <div className="mb-6 p-4 rounded-xl bg-indigo-50 border border-indigo-200">
+                <p className="text-sm font-semibold text-text-primary mb-1">Compare against competitors?</p>
+                <p className="text-xs text-muted mb-3">Select up to 3 to include in the report.</p>
+                <div className="space-y-2">
+                  {suggestedCompetitors.map((c) => (
+                    <label key={c} className="flex items-center gap-3 cursor-pointer">
+                      <span className={`inline-flex items-center justify-center w-5 h-5 rounded border-2 transition flex-shrink-0 ${selectedSuggestions.includes(c) ? 'bg-primary border-primary' : 'border-brand-border bg-white'}`}>
+                        {selectedSuggestions.includes(c) && (
+                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </span>
+                      <span className="text-sm text-text-primary" onClick={() => toggleSuggestion(c)}>{c}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-muted mt-3">{selectedSuggestions.length}/3 selected</p>
+              </div>
+            )}
+
             {error && (
               <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-negative">
                 {error}
@@ -255,10 +310,10 @@ export default function HomePage() {
 
             <button
               onClick={handleAnalyze}
-              disabled={!brand.trim()}
+              disabled={!brand.trim() || loadingSuggestions}
               className="w-full bg-primary hover:bg-indigo-700 disabled:bg-muted disabled:cursor-not-allowed text-white font-semibold rounded-xl py-3.5 transition text-base shadow-sm"
             >
-              Analyze Brand
+              {loadingSuggestions ? 'Finding competitors…' : showCompetitorPicker ? `Run Analysis${selectedSuggestions.length > 0 ? ` with ${selectedSuggestions.length} Competitor${selectedSuggestions.length > 1 ? 's' : ''}` : ' (Brand Only)'}` : 'Analyze Brand'}
             </button>
           </div>
         ) : (
