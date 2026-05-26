@@ -98,49 +98,28 @@ Produce a detailed JSON report with this EXACT structure. All scores are 0-100. 
 
 IMPORTANT: Return ONLY the JSON object. No markdown code fences, no explanation text. The sentiment positive+neutral+negative must sum to 100. Segment percentages must sum to 100.`;
 
-  const encoder = new TextEncoder();
+  try {
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2500,
+      messages: [{ role: 'user', content: prompt }],
+    });
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = (obj: object) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
-      };
+    const textBlock = response.content.find((b) => b.type === 'text');
+    if (!textBlock || textBlock.type !== 'text') throw new Error('No text response from analysis');
 
-      try {
-        const stream = client.messages.stream({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 2500,
-          messages: [{ role: 'user', content: prompt }],
-        });
+    const jsonMatch = textBlock.text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Could not parse JSON from analysis response');
 
-        let fullText = '';
-
-        stream.on('text', (text) => {
-          fullText += text;
-          send({ type: 'delta', text });
-        });
-
-        await stream.finalMessage();
-
-        const jsonMatch = fullText.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error('Could not parse JSON from analysis response');
-
-        const report = JSON.parse(jsonMatch[0]);
-        send({ type: 'done', report });
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Analysis failed';
-        send({ type: 'error', message });
-      } finally {
-        controller.close();
-      }
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    },
-  });
+    const report = JSON.parse(jsonMatch[0]);
+    return new Response(JSON.stringify(report), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Analysis failed';
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 }

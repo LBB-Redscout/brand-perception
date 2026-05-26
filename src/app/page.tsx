@@ -40,49 +40,25 @@ async function runAnalyze(
   brand: string,
   industry: string | undefined,
   searchResult: SearchResult,
-  onDelta: (text: string) => void,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _onDelta: (text: string) => void,
 ): Promise<BrandReport> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 90000);
 
-  const res = await fetch('/api/analyze', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ brand, industry, searchResult }),
-    signal: controller.signal,
-  }).finally(() => clearTimeout(timeout));
-  if (!res.ok) throw new Error('Analyze request failed');
-
-  const reader = res.body!.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let report: BrandReport | null = null;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-
-    const lines = buffer.split('\n');
-    buffer = lines.pop() ?? '';
-
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
-      const payload = line.slice(6).trim();
-      if (!payload) continue;
-      try {
-        const msg = JSON.parse(payload);
-        if (msg.type === 'delta') onDelta(msg.text);
-        if (msg.type === 'done') report = msg.report;
-        if (msg.type === 'error') throw new Error(msg.message);
-      } catch {
-        // ignore partial chunk parse errors
-      }
-    }
+  try {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brand, industry, searchResult }),
+      signal: controller.signal,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Analyze request failed');
+    return data as BrandReport;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  if (!report) throw new Error('No report received from analysis');
-  return report;
 }
 
 export default function HomePage() {
